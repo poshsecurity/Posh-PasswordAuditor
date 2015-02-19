@@ -140,7 +140,7 @@ $ADUsers = $ADUsers | ForEach-Object {
     $UsersProcessed++
     $UserPercentage = $UsersProcessed / $TotalUsers * 100
 
-    if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing User' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -id 1}
+    if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -id 1}
     
     try
     {
@@ -152,7 +152,7 @@ $ADUsers = $ADUsers | ForEach-Object {
     }
 }
 
-if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing User Passwords' -id 1 -Completed }
+if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -id 1 -Completed }
 
 
 #these are the users we found passwords for
@@ -175,7 +175,7 @@ if ($UsersWithPasswordsFound -ne $null)
             $HTMLBody = $ADUsers | ConvertTo-Html -Property SamAccountName, Password -PreContent 'The following users passwords were found in the specified password list'
         }
 
-        Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body $HTMLBody -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
+        Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body ("" + $HTMLBody) -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
     }
 }
 else
@@ -185,7 +185,7 @@ else
     if ($SendResultsViaEmail)
     {
         $HTMLBody = ConvertTo-Html -Body 'No user passwords were found in the specified password list'
-        Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body $HTMLBody -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
+        Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body ("" + $HTMLBody) -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
     }
 }
 
