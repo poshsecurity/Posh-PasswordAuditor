@@ -29,7 +29,6 @@ Param
     [String]
     $PasswordFile,
 
-
     [Parameter(Mandatory = $false)]
     [Switch]
     $SendResultsViaEmail,
@@ -37,37 +36,12 @@ Param
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [String]
-    $SMTPSubject = 'User Audit Results',
-
-    [Parameter(Mandatory = $false)]
-    [ValidateNotNullOrEmpty()]
-    [String]
-    $SMTPServer,
-
-    [Parameter(Mandatory = $false,
-    Position = 19)]
-    [ValidateNotNullOrEmpty()]
-    [String]
-    $SMTPFrom,
+    $SMTPSubject = 'User Password Audit Results',
 
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [String]
     $SMTPTo,
-
-    [Parameter(Mandatory = $false)]
-    [Switch]
-    $SMTPUseSSL,
-
-    [Parameter(Mandatory = $False)]
-    [ValidateNotNullOrEmpty()]
-    [PSCredential]
-    $SMTPCredentials,
-
-    [Parameter(mandatory=$false)]
-	[ValidateNotNullOrEmpty()]
-    [UInt16]
-	$SMTPPort = 25,
     
     [Parameter(Mandatory = $false)]
     [Switch]
@@ -167,15 +141,23 @@ if ($UsersWithPasswordsFound -ne $null)
         if ($DoNotStorePasswords)
         {
             Write-Verbose -Message 'Email will be sent without passwords'
-            $HTMLBody = $ADUsers | ConvertTo-Html -Property SamAccountName -PreContent 'The following users passwords were found in the specified password list' -PostContent 'Note: Actual Passwords will not be displayed'
+            $HTMLBody = $UsersWithPasswordsFound | ConvertTo-Html -Property SamAccountName, DistinguishedName -PreContent 'The following users passwords were found in the specified password list' -PostContent 'Note: Actual Passwords will not be displayed'
         }
         else
         {
             Write-Verbose -Message 'Email will be sent with passwords'
-            $HTMLBody = $ADUsers | ConvertTo-Html -Property SamAccountName, Password -PreContent 'The following users passwords were found in the specified password list'
+            $HTMLBody = $UsersWithPasswordsFound | ConvertTo-Html -Property SamAccountName, Password, DistinguishedName -PreContent 'The following users passwords were found in the specified password list'
         }
 
-        Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body ("" + $HTMLBody) -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
+        $SMTPParameters['Body'] = ("" + $HTMLBody)
+	    $SMTPParameters['Subject'] = $SMTPSubject
+        $SMTPParameters.add('BodyAsHtml', $True)
+
+	    try {
+		    Send-MailMessage @SmtpParameters
+	    } catch {
+		    Throw "Error sending mail message, $_"
+	    }
     }
 }
 else
@@ -195,7 +177,7 @@ if ($WriteResultsToFile)
     {
         Write-Verbose -Message 'Log file written without passwords'
         $ADUsers |
-        Select-Object -Property SamAccountName |
+        Select-Object -Property SamAccountName, DistinguishedName |
         ConvertTo-Csv -NoTypeInformation |
         Out-File -FilePath $LogFile
     }
@@ -203,7 +185,7 @@ if ($WriteResultsToFile)
     {
         Write-Verbose -Message 'Log file written with passwords'
         $ADUsers |
-        Select-Object -Property SamAccountName, Password |
+        Select-Object -Property SamAccountName, Password, DistinguishedName |
         ConvertTo-Csv -NoTypeInformation |
         Out-File -FilePath $LogFile
     }
