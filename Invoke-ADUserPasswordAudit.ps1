@@ -1,6 +1,7 @@
 [CMDLetBinding(DefaultParametersetName='FindByIdentity')]
 Param
 (
+
     [Parameter(Mandatory = $True, ParameterSetName='FindByIdentity')]
     [ValidateNotNullOrEmpty()]
     [String]
@@ -22,6 +23,13 @@ Param
     [String]
     $Filter,
 
+    [Parameter(Mandatory = $True)]
+    [ValidateNotNullOrEmpty()]
+    [ValidateScript({Test-Path $_})]
+    [String]
+    $PasswordFile,
+
+
     [Parameter(Mandatory = $false)]
     [Switch]
     $SendResultsViaEmail,
@@ -41,17 +49,25 @@ Param
     [ValidateNotNullOrEmpty()]
     [String]
     $SMTPFrom,
-    
-    [Parameter(Mandatory = $false)]
-    [ValidateNotNullOrEmpty()]
-    [Int]
-    $SMTPPort = 587,
 
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [String]
     $SMTPTo,
 
+    [Parameter(Mandatory = $false)]
+    [Switch]
+    $SMTPUseSSL,
+
+    [Parameter(Mandatory = $False)]
+    [ValidateNotNullOrEmpty()]
+    [PSCredential]
+    $SMTPCredentials,
+
+    [Parameter(mandatory=$false)]
+	[ValidateNotNullOrEmpty()]
+    [UInt16]
+	$SMTPPort = 25,
     
     [Parameter(Mandatory = $false)]
     [Switch]
@@ -64,13 +80,8 @@ Param
 
     [Parameter(Mandatory = $false)]
     [Switch]
-    $DoNotStorePasswords,
+    $DoNotStorePasswords
 
-    [Parameter(Mandatory = $True)]
-    [ValidateNotNullOrEmpty()]
-    [ValidateScript({Test-Path $_})]
-    [String]
-    $PasswordFile
 )
 
 Set-StrictMode -Version 2
@@ -83,7 +94,7 @@ send-scriptnotification -message 'Ad User Password Audit start' -Severity 'debug
 
 $ADUsers = $null
 
-if ($Identity -ne $null)
+if ($Identity -ne '')
 {
     Write-verbose 'Single User Mode'
 
