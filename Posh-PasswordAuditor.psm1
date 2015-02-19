@@ -2,6 +2,7 @@
 # Export the module members - KUDOS to the chocolatey project for this efficent code
 # 
 
+Import-Module ActiveDirectory
 
 #get the path of where the module is saved (if module is at c:\myscripts\module.psm1, then c:\myscripts\)
 $mypath = (Split-Path -Parent -Path $MyInvocation.MyCommand.Definition)
