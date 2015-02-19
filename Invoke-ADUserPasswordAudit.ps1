@@ -77,6 +77,7 @@ Set-StrictMode -Version 2
 
 import-module PowerShellUtilities
 import-module EnhancedScriptEnvironment
+import-module .\Posh-PasswordAuditor.psm1
 
 send-scriptnotification -message 'Ad User Password Audit start' -Severity 'debug'
 
