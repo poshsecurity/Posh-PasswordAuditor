@@ -3,7 +3,7 @@ Param
 (
     [Parameter(Mandatory = $True, ParameterSetName='FindByIdentity')]
     [ValidateNotNullOrEmpty()]
-    [Microsoft.ActiveDirectory.Management.ADUser]
+    [String]
     $Identity,
 
     [Parameter(Mandatory = $false, ParameterSetName='FindBySearch')]
