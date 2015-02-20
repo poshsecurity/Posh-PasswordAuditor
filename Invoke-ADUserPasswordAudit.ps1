@@ -37,11 +37,6 @@ Param
     [ValidateNotNullOrEmpty()]
     [String]
     $SMTPSubject = 'User Password Audit Results',
-
-    [Parameter(Mandatory = $false)]
-    [ValidateNotNullOrEmpty()]
-    [String]
-    $SMTPTo,
     
     [Parameter(Mandatory = $false)]
     [Switch]
