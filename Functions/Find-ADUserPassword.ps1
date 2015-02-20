@@ -10,12 +10,25 @@ function Find-ADUserPassword
         [Microsoft.ActiveDirectory.Management.ADUser]
         $Identity,
 
-        [Parameter(Mandatory = $True)]
+        [Parameter(Mandatory = $True, ParameterSetName='PasswordFile')]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({Test-Path $_})]
         [String]
         $PasswordFile
     )
+
+    Begin
+    {
+        Write-Verbose "Using Password File $PasswordFile"
+        $Passwords = Get-Content -Path $PasswordFile
+        
+        $TotalPasswords =  ($passwords | Measure-Object).count
+        
+        if ($TotalPasswords -eq 0)
+        {
+            throw "No Passwords Provided"
+        }
+    }
 
     Process 
     {
@@ -23,8 +36,6 @@ function Find-ADUserPassword
 
         Write-Verbose "Testting Passwords for user $( $User.SamAccountName )"
         
-        $Passwords = Get-Content -Path $PasswordFile
-        $TotalPasswords =  ($passwords | Measure-Object).count
         $PasswordsProcessed = 0
         $PasswordFound = $false
 
@@ -35,17 +46,17 @@ function Find-ADUserPassword
 
             if ($TotalPasswords -ne 1) { Write-Progress -Activity 'Testing Password' -PercentComplete $PasswordPercentage -Status "$PasswordPercentage % Complete" -ParentId 1}
 
-            $Password = $Passwords[($PasswordsProcessed -1)]
-            Write-Verbose "Attempting password $Password"
-            $SecureStringPassword = ConvertTo-SecureString -String $Password -AsPlainText -Force
+            $PasswordAttempt = $Passwords[($PasswordsProcessed -1)]
+            Write-Verbose "Attempting password $PasswordAttempt"
+            $SecureStringPassword = ConvertTo-SecureString -String $PasswordAttempt -AsPlainText -Force
             $PasswordFound = Test-UserCredential -Username $User.SamAccountName -Password $SecureStringPassword -Domain
         }
 
         if ($TotalPasswords -ne 1) { Write-Progress -Activity 'Testing Password' -ParentId 1 -Completed}
 
-        if (-not $PasswordFound) { $Password = ''}
+        if (-not $PasswordFound) { $PasswordAttempt = ''}
 
-        $User | Add-Member NoteProperty PasswordFound $PasswordFound -Force -PassThru | Add-Member NoteProperty Password $Password -Force -PassThru
+        $User | Add-Member NoteProperty PasswordFound $PasswordFound -Force -PassThru | Add-Member NoteProperty Password $PasswordAttempt -Force -PassThru
     }
     
 }
