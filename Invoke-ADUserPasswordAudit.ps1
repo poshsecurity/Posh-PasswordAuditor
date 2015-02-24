@@ -7,21 +7,21 @@ Param
     [String]
     $Identity,
 
-    [Parameter(Mandatory = $false, ParameterSetName='FindBySearch')]
+    [Parameter(Mandatory = $True, ParameterSetName='FindBySearch')]
     [ValidateNotNullOrEmpty()]
     [String]
     $SearchBase,
-
-    [Parameter(Mandatory = $false, ParameterSetName='FindBySearch')]
-    [ValidateNotNullOrEmpty()]
-    [ValidateSet('Base', 'OneLevel', 'Subtree')]
-    [String]
-    $SearchScope = 'OneLevel',
 
     [Parameter(Mandatory = $True, ParameterSetName='FindBySearch')]
     [ValidateNotNullOrEmpty()]
     [String]
     $Filter,
+
+    [Parameter(Mandatory = $false, ParameterSetName='FindBySearch')]
+    [ValidateNotNullOrEmpty()]
+    [ValidateSet('Base', 'OneLevel', 'Subtree')]
+    [String]
+    $SearchScope = 'Subtree',
 
     [Parameter(Mandatory = $True)]
     [ValidateNotNullOrEmpty()]
@@ -162,7 +162,17 @@ else
     if ($SendResultsViaEmail)
     {
         $HTMLBody = ConvertTo-Html -Body 'No user passwords were found in the specified password list'
-        Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body ("" + $HTMLBody) -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
+        $SMTPParameters['Body'] = ("" + $HTMLBody)
+	    $SMTPParameters['Subject'] = $SMTPSubject
+        $SMTPParameters.add('BodyAsHtml', $True)
+
+        #Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body ("" + $HTMLBody) -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
+        
+        try {
+		    Send-MailMessage @SmtpParameters
+	    } catch {
+		    Throw "Error sending mail message, $_"
+	    }
     }
 }
 
