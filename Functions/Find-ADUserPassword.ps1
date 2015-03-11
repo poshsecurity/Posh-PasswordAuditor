@@ -25,16 +25,14 @@ function Find-ADUserPassword
         $TotalPasswords =  ($passwords | Measure-Object).count
         
         if ($TotalPasswords -eq 0)
-        {
-            throw "No Passwords Provided"
-        }
+        { throw "No Passwords Provided" }
     }
 
     Process 
     {
         $User = Get-ADUser $Identity
 
-        Write-Verbose "Testting Passwords for user $( $User.SamAccountName )"
+        Write-Verbose "Testing Passwords for user $( $User.SamAccountName )"
         
         $PasswordsProcessed = 0
         $PasswordFound = $false
@@ -44,7 +42,8 @@ function Find-ADUserPassword
             $PasswordsProcessed++
             $PasswordPercentage = $PasswordsProcessed / $TotalPasswords * 100
 
-            if ($TotalPasswords -ne 1) { Write-Progress -Activity 'Testing Password' -PercentComplete $PasswordPercentage -Status "$PasswordPercentage % Complete" -ParentId 1}
+            if ($TotalPasswords -ne 1) 
+            { Write-Progress -Activity 'Testing Password' -PercentComplete $PasswordPercentage -Status "$PasswordPercentage % Complete" -ParentId 1 }
 
             $PasswordAttempt = $Passwords[($PasswordsProcessed -1)]
             Write-Verbose "Attempting password $PasswordAttempt"
@@ -52,9 +51,11 @@ function Find-ADUserPassword
             $PasswordFound = Test-UserCredential -Username $User.SamAccountName -Password $SecureStringPassword -Domain
         }
 
-        if ($TotalPasswords -ne 1) { Write-Progress -Activity 'Testing Password' -ParentId 1 -Completed}
+        if ($TotalPasswords -ne 1) 
+        { Write-Progress -Activity 'Testing Password' -ParentId 1 -Completed }
 
-        if (-not $PasswordFound) { $PasswordAttempt = ''}
+        if (-not $PasswordFound) 
+        { $PasswordAttempt = '' }
 
         $User | Add-Member NoteProperty PasswordFound $PasswordFound -Force -PassThru | Add-Member NoteProperty Password $PasswordAttempt -Force -PassThru
     }
