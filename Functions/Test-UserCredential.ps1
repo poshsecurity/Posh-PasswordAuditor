@@ -54,6 +54,7 @@ function Test-UserCredential
 				2011-08-21: Andy Arismendi - Created.
 				2011-08-22: Andy Arismendi - Add pipelining support for Get-Credential.
 				2011-08-22: Andy Arismendi - Add support for NTLM/kerberos switch.	
+                2015-03-11: Kieran Jacobsen - Removed WMi call to ge
 	#>
 
 	[CmdletBinding(DefaultParameterSetName = "set1")]
@@ -86,9 +87,7 @@ function Test-UserCredential
 			$assem = [reflection.assembly]::LoadWithPartialName($assemType) }
 		catch { throw 'Failed to load assembly "System.DirectoryServices.AccountManagement". The error was: "{0}".' -f $_ }
 		
-		$system = Get-WmiObject -Class Win32_ComputerSystem
-		
-		if (0, 2 -contains $system.DomainRole -and $Domain) {
+        if ($ENV:userdomain -eq $ENV:COMPUTERNAME -and $Domain) {
 			throw 'This computer is not a member of a domain.'
 		}
 	}
@@ -113,9 +112,9 @@ function Test-UserCredential
 			}
 					
 			if ($Domain) {
-				$pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext 'Domain', $system.Domain
+				$pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext 'Domain', $ENV:USERDOMAIN
 			} else {
-				$pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext 'Machine', $env:COMPUTERNAME
+				$pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext 'Machine', $ENV:COMPUTERNAME
 			}
 			
 			if ($Domain -and $UseKerberos) {
