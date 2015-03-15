@@ -165,8 +165,6 @@ else
         $SMTPParameters['Body'] = ("" + $HTMLBody)
 	    $SMTPParameters['Subject'] = $SMTPSubject
         $SMTPParameters.add('BodyAsHtml', $True)
-
-        #Send-MailMessage -To $SMTPTo -From $SMTPFrom -Subject $SMTPSubject -SmtpServer $SMTPServer -Body ("" + $HTMLBody) -BodyAsHtml -UseSsl:$SMTPUseSSL -Credential $SMTPCredential -Port $SMTPPort
         
         try {
 		    Send-MailMessage @SmtpParameters
