@@ -13,4 +13,4 @@ Resolve-Path -Path $mypath\functions\*.ps1 | ForEach-Object -Process {
 }
 
 #export as module members the functions we specify
-Export-ModuleMember -Function Test-UserCredential, Find-ADUserPassword
+Export-ModuleMember -Function Test-UserCredential, Find-UserPassword
