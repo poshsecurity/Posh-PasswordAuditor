@@ -1,3 +1,25 @@
+<#
+	.SYNOPSIS
+
+    .DESCRIPTION
+		
+	.PARAMETER
+	
+	.PARAMETER
+	
+	.EXAMPLE
+			
+	.EXAMPLE
+	
+	.INPUTS
+	
+	.OUTPUTS
+	System.Boolean.
+
+	.LINK
+    http://poshsecurity.com
+#>
+
 [CMDLetBinding(DefaultParametersetName='FindByIdentity')]
 Param
 (
@@ -17,11 +39,11 @@ Param
     [String]
     $Filter,
 
-    [Parameter(Mandatory = $false, ParameterSetName='FindBySearch')]
+    [Parameter(Mandatory = $True, ParameterSetName='FindBySearch')]
     [ValidateNotNullOrEmpty()]
     [ValidateSet('Base', 'OneLevel', 'Subtree')]
     [String]
-    $SearchScope = 'Subtree',
+    $SearchScope,
 
     [Parameter(Mandatory = $True)]
     [ValidateNotNullOrEmpty()]
@@ -55,11 +77,17 @@ Param
 
 Set-StrictMode -Version 2
 
-import-module PowerShellUtilities
-import-module EnhancedScriptEnvironment
-import-module .\Posh-PasswordAuditor.psm1
+import-module -Name PowerShellUtilities
+import-module -Name EnhancedScriptEnvironment
+import-module -Name .\Posh-PasswordAuditor.psm1
 
-send-scriptnotification -message 'Ad User Password Audit start' -Severity 'debug'
+send-scriptnotification -message 'AD User Password Audit start' -Severity 'debug'
+
+if ((-not $SendResultsViaEmail) -and (-not $DoNotStorePasswords))
+{ 
+    Send-ScriptNotification -Message "Select something for this script to do: -SendResultsViaEmail and/or -DoNotStorePasswords" -Severity 'Alert'
+    Exit 1
+}
 
 $ADUsers = $null
 
@@ -68,13 +96,11 @@ if ($Identity -ne '')
     Write-verbose 'Single User Mode'
 
     try
-    {
-        $ADUsers = Get-ADUser -Identity $Identity
-    }
+    { $ADUsers = Get-ADUser -Identity $Identity }
     catch
     {
         Send-ScriptNotification -Message "Error occured getting user via -identity, error was $_" -Severity 'Alert'
-        Exit 1
+        Exit 2
     }
 } 
 else 
@@ -82,29 +108,25 @@ else
     Write-Verbose -Message 'Search Mode'
 
     try
-    {
-        $ADUsers = Get-ADUser -SearchBase $SearchBase -SearchScope $SearchScope -Filter $Filter
-    }
+    { $ADUsers = Get-ADUser -SearchBase $SearchBase -SearchScope $SearchScope -Filter $Filter }
     catch
     {
         Send-ScriptNotification -Message "An error occured getting users via filter/searchscope/searchbase, error was $_" -Severity 'Alert'
-        Exit 2
+        Exit 3
     }
 }
-
 
 $TotalUsers = ($ADUsers | Measure-Object).count
 
 if ($TotalUsers -eq 0)
 {
     Send-ScriptNotification -Message 'No users were found' -Severity 'Alert'
-    Exit 3
+    Exit 4
 }
 
 $UsersProcessed = 0
-Write-Verbose "Total users $TotalUsers"
+Write-Verbose -Message "Total users $TotalUsers"
 
-#Test the passwords
 $ADUsers = $ADUsers | ForEach-Object {
     $UsersProcessed++
     $UserPercentage = $UsersProcessed / $TotalUsers * 100
@@ -112,23 +134,19 @@ $ADUsers = $ADUsers | ForEach-Object {
     if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -id 1}
     
     try
-    {
-        Find-ADUserPassword -identity $_ -PasswordFile $PasswordFile
-    }
+    { Find-UserPassword -identity $_ -PasswordFile $PasswordFile }
     catch
     {
-        Send-ScriptNotification -Message "Error with Find-ADUserPassword, $_" -Severity 'Error'
+        Send-ScriptNotification -Message "Error with Find-ADUserPassword, $_" -Severity 'Error' 
+        Exit 5
     }
 }
 
 if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -id 1 -Completed }
 
+$UsersWithPasswordsFound = ($ADUsers | Where-Object -FilterScript {$_.PasswordFound}) 
 
-#these are the users we found passwords for
-$UsersWithPasswordsFound = ($ADUsers | Where-Object -FilterScript {$_.PasswordFound})
-    
-
-if ($UsersWithPasswordsFound -ne $null)
+if ($null -ne $UsersWithPasswordsFound)
 {
     Write-Verbose -Message 'User passwords found'
     if ($SendResultsViaEmail)
@@ -136,23 +154,30 @@ if ($UsersWithPasswordsFound -ne $null)
         if ($DoNotStorePasswords)
         {
             Write-Verbose -Message 'Email will be sent without passwords'
-            $HTMLBody = $UsersWithPasswordsFound | ConvertTo-Html -Property SamAccountName, DistinguishedName -PreContent 'The following users passwords were found in the specified password list' -PostContent 'Note: Actual Passwords will not be displayed'
+
+            $Pre  = 'The following users passwords were found in the specified password list'
+            $Post = 'Note: Actual Passwords will not be displayed'
+
+            $HTMLBody = ConvertTo-Html -InputObject $UsersWithPasswordsFound -Property SamAccountName, DistinguishedName -PreContent $Pre -PostContent $Post
         }
         else
         {
             Write-Verbose -Message 'Email will be sent with passwords'
-            $HTMLBody = $UsersWithPasswordsFound | ConvertTo-Html -Property SamAccountName, Password, DistinguishedName -PreContent 'The following users passwords were found in the specified password list'
+
+            $Pre = 'The following users passwords were found in the specified password list'
+
+            $HTMLBody = ConvertTo-Html -InputObject $UsersWithPasswordsFound -Property SamAccountName, Password, DistinguishedName -PreContent $Pre
         }
 
-        $SMTPParameters['Body'] = ("" + $HTMLBody)
-	    $SMTPParameters['Subject'] = $SMTPSubject
-        $SMTPParameters.add('BodyAsHtml', $True)
+        $HTMLSMTPParameters = $SMTPParameters.clone()
+        $HTMLSMTPParameters['Body'] = ("" + $HTMLBody)
+	    $HTMLSMTPParameters['Subject'] = $SMTPSubject
+        $HTMLSMTPParameters.add('BodyAsHtml', $True)
 
-	    try {
-		    Send-MailMessage @SmtpParameters
-	    } catch {
-		    Throw "Error sending mail message, $_"
-	    }
+	    try 
+        { Send-MailMessage @HTMLSMTPParameters } 
+        catch 
+        { Send-ScriptNotification -Message "Error sending mail message, $_" -Severity 'Error' }
     }
 }
 else
@@ -162,15 +187,16 @@ else
     if ($SendResultsViaEmail)
     {
         $HTMLBody = ConvertTo-Html -Body 'No user passwords were found in the specified password list'
-        $SMTPParameters['Body'] = ("" + $HTMLBody)
-	    $SMTPParameters['Subject'] = $SMTPSubject
-        $SMTPParameters.add('BodyAsHtml', $True)
+
+        $HTMLSMTPParameters = $SMTPParameters.clone()
+        $HTMLSMTPParameters['Body'] = ("" + $HTMLBody)
+	    $HTMLSMTPParameters['Subject'] = $SMTPSubject
+        $HTMLSMTPParameters.add('BodyAsHtml', $True)
         
-        try {
-		    Send-MailMessage @SmtpParameters
-	    } catch {
-		    Throw "Error sending mail message, $_"
-	    }
+        try 
+        { Send-MailMessage @HTMLSMTPParameters } 
+        catch 
+        { Send-ScriptNotification -Message "Error sending mail message, $_" -Severity 'Error' }
     }
 }
 
@@ -179,19 +205,33 @@ if ($WriteResultsToFile)
     if ($DoNotStorePasswords)
     {
         Write-Verbose -Message 'Log file written without passwords'
-        $ADUsers |
-        Select-Object -Property SamAccountName, DistinguishedName |
-        ConvertTo-Csv -NoTypeInformation |
-        Out-File -FilePath $LogFile
+
+  	    try 
+        { 
+            $ADUsers |
+                Select-Object -Property SamAccountName, DistinguishedName |
+                ConvertTo-Csv -NoTypeInformation |
+                Out-File -FilePath $LogFile        
+        } 
+        catch 
+        { Send-ScriptNotification -Message "Error saving user log, $_" -Severity 'Error' }
+        
     }
     else
     {
         Write-Verbose -Message 'Log file written with passwords'
-        $ADUsers |
-        Select-Object -Property SamAccountName, Password, DistinguishedName |
-        ConvertTo-Csv -NoTypeInformation |
-        Out-File -FilePath $LogFile
+
+        try 
+        { 
+            $ADUsers |
+                Select-Object -Property SamAccountName, Password, DistinguishedName |
+                ConvertTo-Csv -NoTypeInformation |
+                Out-File -FilePath $LogFile        
+        } 
+        catch 
+        { Send-ScriptNotification -Message "Error saving user log, $_" -Severity 'Error' }
+
     }
 }
 
-send-scriptnotification -message 'Ad User Password Audit End' -Severity 'debug'
+Send-ScriptNotification -Message 'Ad User Password Audit End' -Severity 'debug'
