@@ -5,6 +5,8 @@ function Test-UserCredential
     	<#
 		.SYNOPSIS
 			Validates credentials for local or domain user.
+
+        .DESCRIPTION
 		
 		.PARAMETER  Username
 			The user's username.
@@ -54,19 +56,21 @@ function Test-UserCredential
 				2011-08-21: Andy Arismendi - Created.
 				2011-08-22: Andy Arismendi - Add pipelining support for Get-Credential.
 				2011-08-22: Andy Arismendi - Add support for NTLM/kerberos switch.	
-                2015-03-11: Kieran Jacobsen - Removed WMi call to ge
+                2015-03-11: Kieran Jacobsen - Removed WMi call to get domain details.
+                2015-03-21: Kieran Jacobsen - General Reformat and move to best practicess.
 	#>
 
-	[CmdletBinding(DefaultParameterSetName = "set1")]
-	[OutputType("set1", [System.Boolean])]
+	[CmdletBinding(DefaultParameterSetName = "UserPass")]
+	[OutputType("UserPass", [System.Boolean])]
 	[OutputType("PSCredential", [System.Boolean])]
 
-	param(
-		[Parameter(Mandatory=$true, ParameterSetName="set1", position=0)] 
+	param
+    (
+		[Parameter(Mandatory=$true, ParameterSetName="UserPass", position=0)] 
 		[ValidateNotNullOrEmpty()]
 		[String] $Username,
 
-		[Parameter(Mandatory=$true, ParameterSetName="set1", position=1)] 
+		[Parameter(Mandatory=$true, ParameterSetName="UserPass", position=1)] 
 		[ValidateNotNullOrEmpty()]
 		[System.Security.SecureString] $Password,
 		
@@ -74,54 +78,54 @@ function Test-UserCredential
 		[ValidateNotNullOrEmpty()]
 		[Management.Automation.PSCredential] $Credential,
 		
-		[Parameter(position=2)]
+		[Parameter(Mandatory=$false, position=2)]
 		[Switch] $Domain,
 		
-		[Parameter(position=3)]
+		[Parameter(Mandatory=$false, position=3)]
 		[Switch] $UseKerberos
 	)
 	
-	Begin {
-		try { 
+	Begin 
+    {
+		try 
+        { 
 			$assemType = 'System.DirectoryServices.AccountManagement'
-			$assem = [reflection.assembly]::LoadWithPartialName($assemType) }
-		catch { throw 'Failed to load assembly "System.DirectoryServices.AccountManagement". The error was: "{0}".' -f $_ }
+			$assem = [reflection.assembly]::LoadWithPartialName($assemType) 
+        }
+		catch
+        { throw 'Failed to load assembly "System.DirectoryServices.AccountManagement". The error was: "{0}".' -f $_ }
 		
-        if ($ENV:userdomain -eq $ENV:COMPUTERNAME -and $Domain) {
-			throw 'This computer is not a member of a domain.'
-		}
+        if (($ENV:userdomain -eq $ENV:COMPUTERNAME) -and $Domain) 
+        { throw 'This computer is not a member of a domain.' }
 	}
 	
-	Process {
-		try {
-			switch ($PSCmdlet.ParameterSetName) {
-				'PSCredential' {
-					if ($Domain) {
-						$Username = $Credential.UserName.TrimStart('\')
-					} else {
-						$Username = $Credential.GetNetworkCredential().UserName
-					}
-					$PasswordText = $Credential.GetNetworkCredential().Password
-				}
-				'set1' {
-						# Decrypt secure string.
-					$PasswordText = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-							[Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
-						)
-				}
-			}
-					
-			if ($Domain) {
-				$pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext 'Domain', $ENV:USERDOMAIN
-			} else {
-				$pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext 'Machine', $ENV:COMPUTERNAME
-			}
+	Process
+    {
+		try 
+        {
+		
+            if ($PSCmdlet.ParameterSetName -eq 'PSCredential')
+            {
+				if ($Domain) 
+                { $Username = $Credential.UserName.TrimStart('\') } 
+                else 
+                { $Username = $Credential.GetNetworkCredential().UserName }
+
+				$PasswordText = $Credential.GetNetworkCredential().Password
+		    }
+            else
+            { $PasswordText = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)) }
+            					
+			if ($Domain)
+            { $pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext -ArgumentList ('Domain', $ENV:USERDOMAIN) } 
+            else 
+            { $pc = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext -ArgumentList ('Machine', $ENV:COMPUTERNAME) }
 			
-			if ($Domain -and $UseKerberos) {
-				return $pc.ValidateCredentials($Username, $PasswordText)
-			} else {
-				return $pc.ValidateCredentials($Username, $PasswordText, [DirectoryServices.AccountManagement.ContextOptions]::Negotiate)
-			}
+			if ($Domain -and $UseKerberos) 
+            { return $pc.ValidateCredentials($Username, $PasswordText) } 
+            else 
+            { return $pc.ValidateCredentials($Username, $PasswordText, [DirectoryServices.AccountManagement.ContextOptions]::Negotiate) }
+
 		} catch {
 			throw 'Failed to test user credentials. The error was: "{0}".' -f $_
 		} finally {
