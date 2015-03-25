@@ -2,11 +2,14 @@
 
 function Test-UserCredential 
 {
-    	<#
+    <#
 		.SYNOPSIS
 			Validates credentials for local or domain user.
 
         .DESCRIPTION
+            This CMDLet validates a set of credentials against a local user or domain user. The CMDLet was developed by Andy Arismendi.
+
+            The credentials to validate can be specified by username and password or credential object. 
 		
 		.PARAMETER  Username
 			The user's username.
