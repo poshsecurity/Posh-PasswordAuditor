@@ -134,7 +134,7 @@ $ADUsers = $ADUsers | ForEach-Object {
     if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -id 1}
     
     try
-    { Find-UserPassword -identity $_ -PasswordFile $PasswordFile }
+    { Find-UserPassword -username $_.SamAccountName -PasswordFile $PasswordFile -Domain}
     catch
     {
         Send-ScriptNotification -Message "Error with Find-ADUserPassword, $_" -Severity 'Error' 
