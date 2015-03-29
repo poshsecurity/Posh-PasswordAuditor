@@ -1,45 +1,48 @@
+#requires -Version 3 -Modules ActiveDirectory
+
+
 <#
-	.SYNOPSIS
+    .SYNOPSIS
 
     .DESCRIPTION
-		
-	.PARAMETER
-	
-	.PARAMETER
-	
-	.EXAMPLE
-			
-	.EXAMPLE
-	
-	.INPUTS
-	
-	.OUTPUTS
-	System.Boolean.
 
-	.LINK
+    .PARAMETER
+
+    .PARAMETER
+
+    .EXAMPLE
+
+    .EXAMPLE
+
+    .INPUTS
+
+    .OUTPUTS
+    System.Boolean.
+
+    .LINK
     http://poshsecurity.com
 #>
 
-[CMDLetBinding(DefaultParametersetName='FindByIdentity')]
+[CMDLetBinding(DefaultParametersetName = 'FindByIdentity')]
 Param
 (
 
-    [Parameter(Mandatory = $True, ParameterSetName='FindByIdentity')]
+    [Parameter(Mandatory = $True, ParameterSetName = 'FindByIdentity')]
     [ValidateNotNullOrEmpty()]
     [String]
     $Identity,
 
-    [Parameter(Mandatory = $True, ParameterSetName='FindBySearch')]
+    [Parameter(Mandatory = $True, ParameterSetName = 'FindBySearch')]
     [ValidateNotNullOrEmpty()]
     [String]
     $SearchBase,
 
-    [Parameter(Mandatory = $True, ParameterSetName='FindBySearch')]
+    [Parameter(Mandatory = $True, ParameterSetName = 'FindBySearch')]
     [ValidateNotNullOrEmpty()]
     [String]
     $Filter,
 
-    [Parameter(Mandatory = $True, ParameterSetName='FindBySearch')]
+    [Parameter(Mandatory = $True, ParameterSetName = 'FindBySearch')]
     [ValidateNotNullOrEmpty()]
     [ValidateSet('Base', 'OneLevel', 'Subtree')]
     [String]
@@ -77,15 +80,15 @@ Param
 
 Set-StrictMode -Version 2
 
-import-module -Name PowerShellUtilities
-import-module -Name EnhancedScriptEnvironment
-import-module -Name .\Posh-PasswordAuditor.psm1
+Import-Module -Name PowerShellUtilities
+Import-Module -Name EnhancedScriptEnvironment
+Import-Module -Name .\Posh-PasswordAuditor.psm1
 
 send-scriptnotification -message 'AD User Password Audit start' -Severity 'debug'
 
 if ((-not $SendResultsViaEmail) -and (-not $DoNotStorePasswords))
 { 
-    Send-ScriptNotification -Message "Select something for this script to do: -SendResultsViaEmail and/or -DoNotStorePasswords" -Severity 'Alert'
+    Send-ScriptNotification -Message 'Select something for this script to do: -SendResultsViaEmail and/or -DoNotStorePasswords' -Severity 'Alert'
     Exit 1
 }
 
@@ -93,7 +96,7 @@ $ADUsers = $null
 
 if ($Identity -ne '')
 {
-    Write-verbose 'Single User Mode'
+    Write-Verbose -Message 'Single User Mode'
 
     try
     { $ADUsers = Get-ADUser -Identity $Identity }
@@ -127,11 +130,11 @@ if ($TotalUsers -eq 0)
 $UsersProcessed = 0
 Write-Verbose -Message "Total users $TotalUsers"
 
-$ADUsers = $ADUsers | ForEach-Object {
+$ADUsers = $ADUsers | ForEach-Object -Process {
     $UsersProcessed++
     $UserPercentage = $UsersProcessed / $TotalUsers * 100
 
-    if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -id 1}
+    if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -Id 1}
     
     try
     { Find-UserPassword -username $_.SamAccountName -PasswordFile $PasswordFile -Domain}
@@ -142,7 +145,7 @@ $ADUsers = $ADUsers | ForEach-Object {
     }
 }
 
-if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -id 1 -Completed }
+if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -Id 1 -Completed }
 
 $UsersWithPasswordsFound = ($ADUsers | Where-Object -FilterScript {$_.PasswordFound}) 
 
@@ -170,11 +173,11 @@ if ($null -ne $UsersWithPasswordsFound)
         }
 
         $HTMLSMTPParameters = $SMTPParameters.clone()
-        $HTMLSMTPParameters['Body'] = ("" + $HTMLBody)
-	    $HTMLSMTPParameters['Subject'] = $SMTPSubject
+        $HTMLSMTPParameters['Body'] = ('' + $HTMLBody)
+        $HTMLSMTPParameters['Subject'] = $SMTPSubject
         $HTMLSMTPParameters.add('BodyAsHtml', $True)
 
-	    try 
+        try 
         { Send-MailMessage @HTMLSMTPParameters } 
         catch 
         { Send-ScriptNotification -Message "Error sending mail message, $_" -Severity 'Error' }
@@ -189,8 +192,8 @@ else
         $HTMLBody = ConvertTo-Html -Body 'No user passwords were found in the specified password list'
 
         $HTMLSMTPParameters = $SMTPParameters.clone()
-        $HTMLSMTPParameters['Body'] = ("" + $HTMLBody)
-	    $HTMLSMTPParameters['Subject'] = $SMTPSubject
+        $HTMLSMTPParameters['Body'] = ('' + $HTMLBody)
+        $HTMLSMTPParameters['Subject'] = $SMTPSubject
         $HTMLSMTPParameters.add('BodyAsHtml', $True)
         
         try 
@@ -206,16 +209,15 @@ if ($WriteResultsToFile)
     {
         Write-Verbose -Message 'Log file written without passwords'
 
-  	    try 
+        try 
         { 
             $ADUsers |
-                Select-Object -Property SamAccountName, DistinguishedName |
-                ConvertTo-Csv -NoTypeInformation |
-                Out-File -FilePath $LogFile        
+            Select-Object -Property SamAccountName, DistinguishedName |
+            ConvertTo-Csv -NoTypeInformation |
+            Out-File -FilePath $LogFile        
         } 
         catch 
         { Send-ScriptNotification -Message "Error saving user log, $_" -Severity 'Error' }
-        
     }
     else
     {
@@ -224,13 +226,12 @@ if ($WriteResultsToFile)
         try 
         { 
             $ADUsers |
-                Select-Object -Property SamAccountName, Password, DistinguishedName |
-                ConvertTo-Csv -NoTypeInformation |
-                Out-File -FilePath $LogFile        
+            Select-Object -Property SamAccountName, Password, DistinguishedName |
+            ConvertTo-Csv -NoTypeInformation |
+            Out-File -FilePath $LogFile        
         } 
         catch 
         { Send-ScriptNotification -Message "Error saving user log, $_" -Severity 'Error' }
-
     }
 }
 
