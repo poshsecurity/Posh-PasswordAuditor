@@ -1,4 +1,3 @@
-#requires -Version 3 -Modules ActiveDirectory
 Set-StrictMode -Version 2
 
 function Find-UserPassword
@@ -16,13 +15,36 @@ function Find-UserPassword
         This CMDLet supports using Kerberos and NTLM,
 
         .PARAMETER Identity
-        Active Directory Identity.
-        
+        Identify as defined in ActiveDirectory Module->
+        Specifies an Active Directory user object by providing one of the following property values. The identifier in
+        parentheses is the LDAP display name for the attribute. The acceptable values for this parameter are:
+
+        -- A Distinguished Name
+        -- A GUID (objectGUID)
+        -- A Security Identifier (objectSid)
+        -- A SAM Account Name (sAMAccountName)
+
+        The cmdlet searches the default naming context or partition to find the object. If two or more objects are
+        found, the cmdlet returns a non-terminating error.
+
+        This parameter can also get this object through the pipeline or you can set this parameter to an object
+        instance.
+
         .PARAMETER Username
         Username to try.
 
         .PARAMETER PasswordFile
         Password list/file.
+
+        .PARAMETER Domain
+        If this flag is set the user credentials should be a domain user account.
+
+        .PARAMETER UseKerberos
+        By default NTLM is used. Specify this switch to attempt kerberos authentication. 
+
+        This is only used with the 'Domain' parameter.
+
+        You may need to specify domain\user.
 
         .EXAMPLE
         PS C:\> Find-UserPassword -Identify kieran.jacobsen -Password c:\passwordlist.txt
@@ -75,6 +97,10 @@ function Find-UserPassword
         # If the password file was blank, throw an error
         if ($TotalPasswords -eq 0)
         { throw 'No Passwords Provided' }
+
+        # If -domain isn't specified, then we don't need -UseKerberos (as per Test-UserCredental)
+        if (-not $Domain -and $UseKerberos)
+        { throw 'You can only specify -UserKerberos with -Domain'}
     }
 
     Process 
@@ -101,17 +127,19 @@ function Find-UserPassword
 
         While ((-not $PasswordFound) -and ($PasswordsProcessed -le $TotalPasswords))
         {            
-            if ($TotalPasswords -ne 1) 
+            if ($TotalPasswords -gt 1) 
             { 
+                # Write the percentage through the number of passwords
                 $PasswordPercentage = $PasswordsProcessed / $TotalPasswords * 100
                 Write-Progress -Activity 'Testing Password' -PercentComplete $PasswordPercentage -Status "$PasswordPercentage % Complete" -ParentId 1 
-                
+
+                # Get the next password
                 $PasswordAttempt = $Passwords[($PasswordsProcessed )]
             }
-            else
-            {
-                # So this probably looks quite weird, but there is a reasonable explanation. If the Passowrd list only contains a single entry, 
 
+            if ($TotalPasswords -eq 1) 
+            {
+                # Whilst this might not make sense, if there was a single password in the file, we don't want to index into the single password.
                 $PasswordAttempt = $Passwords
             }
             
@@ -136,6 +164,7 @@ function Find-UserPassword
         $ReturnUser | Add-Member -NotePropertyName PasswordFound -NotePropertyValue $PasswordFound
         $ReturnUser | Add-Member -NotePropertyName Password -NotePropertyValue $PasswordAttempt
 
+        # Return the object
         $ReturnUser
     }
 }
