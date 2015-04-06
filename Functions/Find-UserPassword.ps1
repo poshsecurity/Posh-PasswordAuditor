@@ -100,7 +100,7 @@ function Find-UserPassword
 
         # If -domain isn't specified, then we don't need -UseKerberos (as per Test-UserCredental)
         if (-not $Domain -and $UseKerberos)
-        { throw 'You can only specify -UserKerberos with -Domain'}
+        { throw 'You can only specify -UserKerberos with -Domain' }
     }
 
     Process 
@@ -137,11 +137,9 @@ function Find-UserPassword
                 $PasswordAttempt = $Passwords[($PasswordsProcessed )]
             }
 
+            # Whilst this might not make sense, if there was a single password in the file, we don't want to index into the single password.
             if ($TotalPasswords -eq 1) 
-            {
-                # Whilst this might not make sense, if there was a single password in the file, we don't want to index into the single password.
-                $PasswordAttempt = $Passwords
-            }
+            { $PasswordAttempt = $Passwords }
             
             Write-Verbose -Message "Attempting password $PasswordAttempt"
 
