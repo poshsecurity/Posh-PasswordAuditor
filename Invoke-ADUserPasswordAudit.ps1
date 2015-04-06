@@ -283,7 +283,7 @@ $ADUsers = $ADUsers | ForEach-Object -Process {
     if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -Id 1}
     
     try
-    { Find-UserPassword -username $_.SamAccountName -PasswordFile $PasswordFile -Domain}
+    { Find-UserPassword -Identity $_ -PasswordFile $PasswordFile }
     catch
     {
         Write-Error -Message "Error with Find-ADUserPassword, $_"
@@ -372,7 +372,7 @@ if ($WriteResultsToFile)
 
         try 
         { 
-            $ADUsers |
+            $UsersWithPasswordsFound |
                 Select-Object -Property SamAccountName, DistinguishedName |
                 ConvertTo-Csv -NoTypeInformation |
                 Out-File -FilePath $LogFile        
@@ -389,7 +389,7 @@ if ($WriteResultsToFile)
 
         try 
         {
-            $ADUsers |
+            $UsersWithPasswordsFound |
                 Select-Object -Property SamAccountName, Password, DistinguishedName |
                 ConvertTo-Csv -NoTypeInformation |
                 Out-File -FilePath $LogFile

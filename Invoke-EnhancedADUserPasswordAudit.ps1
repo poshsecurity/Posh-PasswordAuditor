@@ -110,12 +110,6 @@
     If no user passwords were found, an email stating that will be sent.
     The email will be formatted as a HTML message.
 
-    .PARAMETER SMTPServer
-    SMTP server to use to send email.
-
-    .PARAMETER SMTPFrom
-    SMTP message will be sent from this address.
-
     .PARAMETER SMTPTo
     SMTP message will be sent to this address.
 
@@ -189,24 +183,6 @@ Param
     [Parameter(Mandatory = $True, ParameterSetName = 'FindBySearchEmail')]
     [Switch]
     $SendResultsViaEmail,
-
-    [Parameter(Mandatory = $True, ParameterSetName = 'FindByIdentityEmail')]
-    [Parameter(Mandatory = $True, ParameterSetName = 'FindBySearchEmail')]
-    [ValidateNotNullOrEmpty()]
-    [String]
-    $SMTPServer,
-
-    [Parameter(Mandatory = $True, ParameterSetName = 'FindByIdentityEmail')]
-    [Parameter(Mandatory = $True, ParameterSetName = 'FindBySearchEmail')]
-    [ValidateNotNullOrEmpty()]
-    [String]
-    $SMTPFrom,
-
-    [Parameter(Mandatory = $True, ParameterSetName = 'FindByIdentityEmail')]
-    [Parameter(Mandatory = $True, ParameterSetName = 'FindBySearchEmail')]
-    [ValidateNotNullOrEmpty()]
-    [String[]]
-    $SMTPTo,
 
     [Parameter(Mandatory = $False, ParameterSetName = 'FindByIdentityEmail')]
     [Parameter(Mandatory = $False, ParameterSetName = 'FindBySearchEmail')]
@@ -288,7 +264,7 @@ $ADUsers = $ADUsers | ForEach-Object -Process {
     if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -Id 1}
     
     try
-    { Find-UserPassword -username $_.SamAccountName -PasswordFile $PasswordFile -Domain}
+    { Find-UserPassword -Identity $_ -PasswordFile $PasswordFile }
     catch
     {
         Send-ScriptNotification -Message "Error with Find-ADUserPassword, $_" -Severity 'Error' 
@@ -369,7 +345,7 @@ if ($WriteResultsToFile)
 
         try 
         { 
-            $ADUsers |
+            $UsersWithPasswordsFound |
                 Select-Object -Property SamAccountName, DistinguishedName |
                 ConvertTo-Csv -NoTypeInformation |
                 Out-File -FilePath $LogFile        
@@ -386,7 +362,7 @@ if ($WriteResultsToFile)
 
         try 
         {
-            $ADUsers |
+            $UsersWithPasswordsFound |
                 Select-Object -Property SamAccountName, Password, DistinguishedName |
                 ConvertTo-Csv -NoTypeInformation |
                 Out-File -FilePath $LogFile} 
