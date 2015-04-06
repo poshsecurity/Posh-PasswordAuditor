@@ -228,7 +228,7 @@ Param
     [String]
     $PasswordFile,
 
-    [Parameter(Mandatory = $false)]
+    [Parameter(Mandatory = $False)]
     [Switch]
     $DoNotStorePasswords
 
@@ -248,7 +248,7 @@ if ($Identity -ne '')
     { $ADUsers = Get-ADUser -Identity $Identity }
     catch
     {
-        #TODO: Send-ScriptNotification -Message "Error occured getting user via -identity, error was $_" -Severity 'Alert'
+        Write-Error -Message "Error occured getting user via -identity, error was $_"
         Exit 2
     }
 } 
@@ -260,7 +260,7 @@ else
     { $ADUsers = Get-ADUser -SearchBase $SearchBase -SearchScope $SearchScope -Filter $Filter }
     catch
     {
-        #TODO: Send-ScriptNotification -Message "An error occured getting users via filter/searchscope/searchbase, error was $_" -Severity 'Alert'
+        Write-Error -Message "An error occured getting users via filter/searchscope/searchbase, error was $_"
         Exit 3
     }
 }
@@ -269,7 +269,7 @@ $TotalUsers = ($ADUsers | Measure-Object).count
 
 if ($TotalUsers -eq 0)
 {
-    #TODO: Send-ScriptNotification -Message 'No users were found' -Severity 'Alert'
+    Write-Error -Message 'No users were found'
     Exit 4
 }
 
@@ -286,7 +286,7 @@ $ADUsers = $ADUsers | ForEach-Object -Process {
     { Find-UserPassword -username $_.SamAccountName -PasswordFile $PasswordFile -Domain}
     catch
     {
-        #TODO: Send-ScriptNotification -Message "Error with Find-ADUserPassword, $_" -Severity 'Error' 
+        Write-Error -Message "Error with Find-ADUserPassword, $_"
         Exit 5
     }
 }
@@ -319,22 +319,21 @@ if ($null -ne $UsersWithPasswordsFound)
             $HTMLBody = ConvertTo-Html -InputObject $UsersWithPasswordsFound -Property SamAccountName, Password, DistinguishedName -PreContent $Pre
         }
 
-        #TODO: $HTMLSMTPParameters = $SMTPParameters.clone()
-        #TODO: $HTMLSMTPParameters['Body'] = ('' + $HTMLBody)
-        #TODO: $HTMLSMTPParameters['Subject'] = $SMTPSubject
-        #TODO: $HTMLSMTPParameters.add('BodyAsHtml', $True)
-
-        $SMTPParameters = @{Body       = $HTMLBody
-                            From       = $SMTPFrom 
-                            Subject    = $SMTPSubject
-                            To         = $SMTPTo
-                            SmtpServer = $SMTPServer
-                           }
+        $SMTPParameters = @{
+            Body       = $HTMLBody
+            From       = $SMTPFrom
+            Subject    = $SMTPSubject
+            To         = $SMTPTo
+            SmtpServer = $SMTPServer
+            BodyAsHtml = $True
+        }
 
         try 
         { Send-MailMessage @SMTPParameters } 
         catch 
-        { #TODO: Send-ScriptNotification -Message "Error sending mail message, $_" -Severity 'Error' 
+        {
+            Write-Error -Message "Error sending mail message, $_"
+            Exit 6
         }
     }
 }
@@ -346,22 +345,21 @@ else
     {
         $HTMLBody = ConvertTo-Html -Body 'No user passwords were found in the specified password list'
 
-        #TODO: $HTMLSMTPParameters = $SMTPParameters.clone()
-        #TODO: $HTMLSMTPParameters['Body'] = ('' + $HTMLBody)
-        #TODO: $HTMLSMTPParameters['Subject'] = $SMTPSubject
-        #TODO: $HTMLSMTPParameters.add('BodyAsHtml', $True)
-        
-        $SMTPParameters = @{Body       = $HTMLBody
-                            From       = $SMTPFrom 
-                            Subject    = $SMTPSubject
-                            To         = $SMTPTo
-                            SmtpServer = $SMTPServer
-                           }
+        $SMTPParameters = @{
+            Body       = $HTMLBody
+            From       = $SMTPFrom
+            Subject    = $SMTPSubject
+            To         = $SMTPTo
+            SmtpServer = $SMTPServer
+            BodyAsHtml = $True
+        }
 
         try 
         { Send-MailMessage @SMTPParameters } 
         catch 
-        { #TODO: Send-ScriptNotification -Message "Error sending mail message, $_" -Severity 'Error' 
+        {
+            Write-Error -Message "Error sending mail message, $_"
+            Exit 7
         }
     }
 }
@@ -375,12 +373,14 @@ if ($WriteResultsToFile)
         try 
         { 
             $ADUsers |
-            Select-Object -Property SamAccountName, DistinguishedName |
-            ConvertTo-Csv -NoTypeInformation |
-            Out-File -FilePath $LogFile        
+                Select-Object -Property SamAccountName, DistinguishedName |
+                ConvertTo-Csv -NoTypeInformation |
+                Out-File -FilePath $LogFile        
         } 
         catch 
-        { #TODO: Send-ScriptNotification -Message "Error saving user log, $_" -Severity 'Error' 
+        {
+            Write-Error -Message "Error saving user log, $_"
+            Exit 8
         }
     }
     else
@@ -388,14 +388,16 @@ if ($WriteResultsToFile)
         Write-Verbose -Message 'Log file written with passwords'
 
         try 
-        { 
+        {
             $ADUsers |
-            Select-Object -Property SamAccountName, Password, DistinguishedName |
-            ConvertTo-Csv -NoTypeInformation |
-            Out-File -FilePath $LogFile        
+                Select-Object -Property SamAccountName, Password, DistinguishedName |
+                ConvertTo-Csv -NoTypeInformation |
+                Out-File -FilePath $LogFile
         } 
         catch 
-        { #TODO: Send-ScriptNotification -Message "Error saving user log, $_" -Severity 'Error' 
+        {
+            Write-Error -Message "Error saving user log, $_"
+            Exit 9
         }
     }
 }
