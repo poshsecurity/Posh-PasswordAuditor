@@ -125,14 +125,16 @@ function Find-UserPassword
         $PasswordsProcessed = 0
         $PasswordFound = $False
 
-        While ((-not $PasswordFound) -and ($PasswordsProcessed -le $TotalPasswords))
-        {            
+        While ((-not $PasswordFound) -and ($PasswordsProcessed -lt $TotalPasswords))
+        {
+            Write-Verbose -Message "Passwords processed $PasswordsProcessed"
+            
             if ($TotalPasswords -gt 1) 
             { 
                 # Write the percentage through the number of passwords
                 $PasswordPercentage = $PasswordsProcessed / $TotalPasswords * 100
                 Write-Progress -Activity 'Testing Password' -PercentComplete $PasswordPercentage -Status "$PasswordPercentage % Complete" -ParentId 1 
-
+            
                 # Get the next password
                 $PasswordAttempt = $Passwords[($PasswordsProcessed )]
             }
@@ -140,7 +142,7 @@ function Find-UserPassword
             # Whilst this might not make sense, if there was a single password in the file, we don't want to index into the single password.
             if ($TotalPasswords -eq 1) 
             { $PasswordAttempt = $Passwords }
-            
+
             Write-Verbose -Message "Attempting password $PasswordAttempt"
 
             # Encrypt the password and then send it to test-usercredential with the appropriate parameters
@@ -159,8 +161,8 @@ function Find-UserPassword
         { $PasswordAttempt = '' }
 
         # Update the pipelined object       
-        $ReturnUser | Add-Member -NotePropertyName PasswordFound -NotePropertyValue $PasswordFound
-        $ReturnUser | Add-Member -NotePropertyName Password -NotePropertyValue $PasswordAttempt
+        $ReturnUser | Add-Member -NotePropertyName PasswordFound -NotePropertyValue $PasswordFound -Force
+        $ReturnUser | Add-Member -NotePropertyName Password -NotePropertyValue $PasswordAttempt -Force
 
         # Return the object
         $ReturnUser
