@@ -202,7 +202,6 @@ Param
     $LogFile,
 
     [Parameter(Mandatory = $True)]
-    [ValidateNotNullOrEmpty()]
     [ValidateScript({Test-Path $_})]
     [String]
     $PasswordFile,
@@ -261,7 +260,8 @@ $ADUsers = $ADUsers | ForEach-Object -Process {
     $UsersProcessed++
     $UserPercentage = $UsersProcessed / $TotalUsers * 100
 
-    if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -Id 1}
+    if ($TotalUsers -ne 1) 
+    { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -Id 1 }
     
     try
     { Find-UserPassword -Identity $_ -PasswordFile $PasswordFile }
@@ -272,7 +272,8 @@ $ADUsers = $ADUsers | ForEach-Object -Process {
     }
 }
 
-if ($TotalUsers -ne 1) { Write-Progress -Activity 'Testing passwords of users' -Id 1 -Completed }
+if ($TotalUsers -ne 1) 
+{ Write-Progress -Activity 'Testing passwords of users' -Id 1 -Completed }
 
 $UsersWithPasswordsFound = ($ADUsers | Where-Object -FilterScript {$_.PasswordFound}) 
 

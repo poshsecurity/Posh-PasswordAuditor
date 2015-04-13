@@ -106,7 +106,7 @@ function Test-UserCredential
 
         # If -domain isn't specified, then we don't need -UseKerberos
         if (-not $Domain -and $UseKerberos)
-        { throw 'You can only specify -UserKerberos with -Domain'}
+        { throw 'You can only specify -UserKerberos with -Domain' }
     }
 
     Process
@@ -135,7 +135,8 @@ function Test-UserCredential
             else 
             { return $pc.ValidateCredentials($Username, $PasswordText, [DirectoryServices.AccountManagement.ContextOptions]::Negotiate) }
         }
-        catch {throw 'Failed to test user credentials. The error was: "{0}".' -f $_} 
+        catch 
+        { throw 'Failed to test user credentials. The error was: "{0}".' -f $_ } 
         finally 
         {
             Remove-Variable -Name Username -ErrorAction SilentlyContinue
