@@ -72,6 +72,7 @@ function Find-UserPassword
 
     Begin
     {
+        Write-Verbose -Message "Param set $($PSCmdlet.ParameterSetName)"
         if ($PSCmdlet.ParameterSetName -eq 'PasswordFile')
         {
             Write-Verbose -Message "Using Password File $PasswordFile"
@@ -112,8 +113,10 @@ function Find-UserPassword
             }
 
             # Whilst this might not make sense, if there was a single password in the file, we don't want to index into the single password.
-            if ($TotalPasswords -eq 1) 
+            if ( ($TotalPasswords -eq 1) -and ($PSCmdlet.ParameterSetName -eq 'PasswordFile') )
             { $PasswordAttempt = $Passwords }
+            elseif ( ($TotalPasswords -eq 1) -and ($PSCmdlet.ParameterSetName -eq 'PasswordArray') )
+            { $PasswordAttempt = $Passwords[0] }
 
             Write-Verbose -Message "Attempting password $PasswordAttempt"
 
