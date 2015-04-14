@@ -236,7 +236,8 @@ Param
 
 Set-StrictMode -Version 2
 
-Import-Module -Name .\Posh-PasswordAuditor.psm1
+Import-Module -Name ActiveDirectory
+Import-Module -Name .\Posh-PasswordAuditor.psd1
 
 $ADUsers = $null
 
@@ -284,7 +285,7 @@ $ADUsers = $ADUsers | ForEach-Object -Process {
     { Write-Progress -Activity 'Testing passwords of users' -PercentComplete $UserPercentage -Status "$UserPercentage % Complete" -Id 1 }
     
     try
-    { Find-UserPassword -Identity $_ -PasswordFile $PasswordFile }
+    { Find-UserPassword -Username $_.SamAccountName -PasswordFile $PasswordFile -Domain }
     catch
     {
         Write-Error -Message "Error with Find-ADUserPassword, $_"
@@ -310,7 +311,7 @@ if ($null -ne $UsersWithPasswordsFound)
             $Pre  = 'The following users passwords were found in the specified password list'
             $Post = 'Note: Actual Passwords will not be displayed'
 
-            $HTMLBody = ConvertTo-Html -InputObject $UsersWithPasswordsFound -Property SamAccountName, DistinguishedName -PreContent $Pre -PostContent $Post
+            $HTMLBody = ConvertTo-Html -InputObject $UsersWithPasswordsFound -Property Username -PreContent $Pre -PostContent $Post
         }
         else
         {
@@ -318,7 +319,7 @@ if ($null -ne $UsersWithPasswordsFound)
 
             $Pre = 'The following users passwords were found in the specified password list'
 
-            $HTMLBody = ConvertTo-Html -InputObject $UsersWithPasswordsFound -Property SamAccountName, Password, DistinguishedName -PreContent $Pre
+            $HTMLBody = ConvertTo-Html -InputObject $UsersWithPasswordsFound -Property Username, Password -PreContent $Pre
         }
 
         $SMTPParameters = @{
@@ -336,6 +337,44 @@ if ($null -ne $UsersWithPasswordsFound)
         {
             Write-Error -Message "Error sending mail message, $_"
             Exit 6
+        }
+    }
+
+    if ($WriteResultsToFile)
+    {
+        if ($DoNotStorePasswords)
+        {
+            Write-Verbose -Message 'Log file written without passwords'
+
+            try 
+            { 
+                $UsersWithPasswordsFound |
+                    Select-Object -Property Username |
+                    ConvertTo-Csv -NoTypeInformation |
+                    Out-File -FilePath $LogFile        
+            } 
+            catch 
+            {
+                Write-Error -Message "Error saving user log, $_"
+                Exit 8
+            }
+        }
+        else
+        {
+            Write-Verbose -Message 'Log file written with passwords'
+
+            try 
+            {
+                $UsersWithPasswordsFound |
+                    Select-Object -Property Username, Password |
+                    ConvertTo-Csv -NoTypeInformation |
+                    Out-File -FilePath $LogFile
+            } 
+            catch 
+            {
+                Write-Error -Message "Error saving user log, $_"
+                Exit 9
+            }
         }
     }
 }
@@ -362,44 +401,6 @@ else
         {
             Write-Error -Message "Error sending mail message, $_"
             Exit 7
-        }
-    }
-}
-
-if ($WriteResultsToFile)
-{
-    if ($DoNotStorePasswords)
-    {
-        Write-Verbose -Message 'Log file written without passwords'
-
-        try 
-        { 
-            $UsersWithPasswordsFound |
-                Select-Object -Property SamAccountName, DistinguishedName |
-                ConvertTo-Csv -NoTypeInformation |
-                Out-File -FilePath $LogFile        
-        } 
-        catch 
-        {
-            Write-Error -Message "Error saving user log, $_"
-            Exit 8
-        }
-    }
-    else
-    {
-        Write-Verbose -Message 'Log file written with passwords'
-
-        try 
-        {
-            $UsersWithPasswordsFound |
-                Select-Object -Property SamAccountName, Password, DistinguishedName |
-                ConvertTo-Csv -NoTypeInformation |
-                Out-File -FilePath $LogFile
-        } 
-        catch 
-        {
-            Write-Error -Message "Error saving user log, $_"
-            Exit 9
         }
     }
 }

@@ -14,22 +14,6 @@ function Find-UserPassword
 
         This CMDLet supports using Kerberos and NTLM,
 
-        .PARAMETER Identity
-        Identify as defined in ActiveDirectory Module->
-        Specifies an Active Directory user object by providing one of the following property values. The identifier in
-        parentheses is the LDAP display name for the attribute. The acceptable values for this parameter are:
-
-        -- A Distinguished Name
-        -- A GUID (objectGUID)
-        -- A Security Identifier (objectSid)
-        -- A SAM Account Name (sAMAccountName)
-
-        The cmdlet searches the default naming context or partition to find the object. If two or more objects are
-        found, the cmdlet returns a non-terminating error.
-
-        This parameter can also get this object through the pipeline or you can set this parameter to an object
-        instance.
-
         .PARAMETER Username
         Username to try.
 
@@ -53,23 +37,17 @@ function Find-UserPassword
         Microsoft.ActiveDirectory.Management.ADUser
 
         .OUTPUTS
-        System.Boolean.
+        PSObject
 
         .LINK
         http://poshsecurity.com
     #>
 
     [CmdletBinding()]
-    [OutputType('ADIdentity', [Microsoft.ActiveDirectory.Management.ADUser])]
-    [OutputType('Username', [PSObject])]
+    [OutputType([PSObject])]
     Param
     (
-        [Parameter(Mandatory = $True, valuefrompipeline = $True, ParameterSetName = 'ADIdentity')]
-        [ValidateNotNullOrEmpty()]
-        [Microsoft.ActiveDirectory.Management.ADUser] 
-        $Identity,
-
-        [Parameter(Mandatory = $True, valuefrompipeline = $True, ParameterSetName = 'Username')]
+        [Parameter(Mandatory = $True, valuefrompipeline = $True)]
         [ValidateNotNullOrEmpty()]
         [String] 
         $Username,
@@ -79,7 +57,7 @@ function Find-UserPassword
         [String]
         $PasswordFile,
 
-        [Parameter(Mandatory = $False, ParameterSetName = 'Username')]
+        [Parameter(Mandatory = $False)]
         [Switch] $Domain,
 
         [Parameter(Mandatory = $False)]
@@ -105,21 +83,6 @@ function Find-UserPassword
 
     Process 
     {
-        if ($PSCmdlet.ParameterSetName -eq 'ADIdentity')
-        {
-            # If we are specifying an active directory identity, then we need to resolve that to an ad object.
-            # We will also set the username to the SAM Account Name, and enable domain mode
-            $ReturnUser = Get-ADUser -Identity $Identity
-            $Username = $ReturnUser.SamAccountName
-            $Domain = $True
-        }
-        else
-        {
-            # Create a custom PS object to return, and add the username
-            $ReturnUser = New-Object -TypeName PSObject
-            $ReturnUser | Add-Member -NotePropertyName Username -NotePropertyValue $Username
-        }
-
         Write-Verbose -Message "Testing Passwords for user $Username"
         
         $PasswordsProcessed = 0
@@ -160,7 +123,9 @@ function Find-UserPassword
         if (-not $PasswordFound) 
         { $PasswordAttempt = '' }
 
-        # Update the pipelined object       
+        # Create a custom PS object to return
+        $ReturnUser = New-Object -TypeName PSObject
+        $ReturnUser | Add-Member -NotePropertyName Username -NotePropertyValue $Username -Force      
         $ReturnUser | Add-Member -NotePropertyName PasswordFound -NotePropertyValue $PasswordFound -Force
         $ReturnUser | Add-Member -NotePropertyName Password -NotePropertyValue $PasswordAttempt -Force
 
