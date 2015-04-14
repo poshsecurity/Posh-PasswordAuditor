@@ -43,7 +43,7 @@ function Find-UserPassword
         http://poshsecurity.com
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'PasswordFile')]
     [OutputType([PSObject])]
     Param
     (
@@ -52,10 +52,15 @@ function Find-UserPassword
         [String] 
         $Username,
 
-        [Parameter(Mandatory = $True)]
+        [Parameter(Mandatory = $True, ParameterSetName = 'PasswordFile')]
         [ValidateScript({Test-Path $_})]
         [String]
         $PasswordFile,
+
+        [Parameter(Mandatory = $True, ParameterSetName = 'PasswordArray')]
+        [ValidateNotNullOrEmpty()]
+        [String[]]
+        $Passwords,
 
         [Parameter(Mandatory = $False)]
         [Switch] $Domain,
@@ -67,11 +72,15 @@ function Find-UserPassword
 
     Begin
     {
-        Write-Verbose -Message "Using Password File $PasswordFile"
-        $Passwords = Get-Content -Path $PasswordFile
+        if ($PSCmdlet.ParameterSetName -eq 'PasswordFile')
+        {
+            Write-Verbose -Message "Using Password File $PasswordFile"
+            $Passwords = Get-Content -Path $PasswordFile
+        }
+
         $TotalPasswords = ($Passwords | Measure-Object).count
         Write-Verbose -Message "Total Passwords is $TotalPasswords"
-        
+
         # If the password file was blank, throw an error
         if ($TotalPasswords -eq 0)
         { throw 'No Passwords Provided' }
